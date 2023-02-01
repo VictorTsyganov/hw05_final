@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}
+  Пост {{ post.text|truncatechars:30 }}.
+{% endblock %}
+{% block content %}
+  {% load thumbnail %}
+  <div class="container py-5">
+    <article>
+      <ul>
+        <li>
+          Дата публикации: {{ post.pub_date|date:"d E Y" }}
+        </li>
+        {% if post.group %}
+          <li>
+            Группа: {{ post.group.slug }}<br>
+          </li>
+          <li>
+            <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
+          </li>
+        {% endif %}
+        <li>
+          Автор: {{ post.author.get_full_name }}
+        </li>
+        <li>
+          Всего постов автора:  <span >{{ post.author.posts.count }}</span>
+        </li>
+        <li>
+          <a href="{% url 'posts:profile' post.author.username %}">все посты пользователя</a>
+        </li>
+      </ul>
+      {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
+        <img class="card-img my-2" src="{{ im.url }}">
+      {% endthumbnail %}
+      <p>{{ post.text }}</p>
+      {% if user == post.author %}
+        <div class="col-md-6 offset-md-0">
+          <a class="btn btn-primary"
+            href="{% url 'posts:post_edit' post.id %}">Редактировать запись</a>
+        </div>
+      {% endif %}
+      {% include 'posts/includes/comments.html' %}
+    </article>
+  </div>
+{% endblock %}
