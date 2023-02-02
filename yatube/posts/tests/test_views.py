@@ -269,12 +269,16 @@ class PostUrlTest(TestCase):
 
     def test_can_follow_and_unfollow(self):
         count_follow = Follow.objects.all().count()
+        folower_count = self.author.follower.count()
         self.authorized_client.get(reverse(self.post_follow, kwargs={
                                    'username': self.author.username}))
         self.assertEqual(Follow.objects.all().count(), count_follow + 1)
         self.authorized_client.get(reverse(self.post_unfollow, kwargs={
                                    'username': self.author.username}))
         self.assertEqual(Follow.objects.all().count(), count_follow)
+        self.authorized_client_author.get(reverse(self.post_follow, kwargs={
+            'username': self.author.username}))
+        self.assertEqual(Follow.objects.all().count(), folower_count)
 
     def test_new_post_in_feed_followers(self):
         self.authorized_client.get(reverse(self.post_follow, kwargs={
