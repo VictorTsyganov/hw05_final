@@ -27,12 +27,6 @@ class PostUrlTest(TestCase):
             description='Тестовое описание',
         )
 
-        cls.group_1 = Group.objects.create(
-            title='Тестовая 1',
-            slug='test-slug_1',
-            description='Тестовое 1',
-        )
-
         cls.post = Post.objects.create(
             author=cls.user,
             text='Тестовый пост!!!',
@@ -41,13 +35,20 @@ class PostUrlTest(TestCase):
         objs_group = [Post(
             author=cls.user,
             group=cls.group,
-            text='Тестовый пост ' + str(i)) for i in range(14)
+            text='Тест пост ' + str(i)) for i in range(14)
         ]
         Post.objects.bulk_create(objs_group)
+
+        cls.group_1 = Group.objects.create(
+            title='Тестовая 1',
+            slug='test-slug_1',
+            description='Тестовое 1',
+        )
+
         objs_group_1 = [Post(
             author=cls.user,
             group=cls.group_1,
-            text='Тестовый пост 111_' + str(i)) for i in range(3)
+            text='Тест пост 111_' + str(i)) for i in range(3)
         ]
         Post.objects.bulk_create(objs_group_1)
 
@@ -76,7 +77,7 @@ class PostUrlTest(TestCase):
         self.post_follow_index = 'posts:follow_index'
         self.post_follow = 'posts:profile_follow'
         self.post_unfollow = 'posts:profile_unfollow'
-        self.posts_on_finsl_main_page = (
+        self.posts_on_second_page = (
             len(Post.objects.all()) % settings.POSTS_ON_PAGE)
         self.posts_on_finsl_author_page = (
             len(self.author.posts.all()) % settings.POSTS_ON_PAGE)
@@ -105,7 +106,7 @@ class PostUrlTest(TestCase):
                 response = self.authorized_client_author.get(address)
                 self.assertTemplateUsed(response, name)
 
-    def test_first_page_contains_ten_records(self):
+    def test_first_page_contains_records(self):
         quantity_on_pages = {
             reverse(self.main_page): settings.POSTS_ON_PAGE,
             (reverse(self.group_page,
@@ -122,7 +123,7 @@ class PostUrlTest(TestCase):
 
     def test_second_page_contains_records(self):
         quantity_on_pages = {
-            reverse(self.main_page): self.posts_on_finsl_main_page,
+            reverse(self.main_page): self.posts_on_second_page,
             (reverse(self.group_page,
                      kwargs={'slug': self.group.slug})):
             self.posts_on_finsl_group_page,
@@ -181,18 +182,19 @@ class PostUrlTest(TestCase):
 
     def test_pages_for_correct_info_another_group(self):
         info_on_pages = {
-            reverse(self.main_page): list(self.group_1.posts.all()),
+            reverse(self.main_page): list(PostUrlTest.group_1.posts.all()),
             reverse(self.group_page, kwargs={'slug': self.group_1.slug}):
-            list(self.group_1.posts.all()),
+            list(PostUrlTest.group_1.posts.all()),
             reverse(self.profile_page, kwargs={'username':
-                                               self.author.username}):
-            list(self.group_1.posts.all()),
+                                               PostUrlTest.user.username}):
+            list(PostUrlTest.group_1.posts.all()),
         }
         for address, info in info_on_pages.items():
             with self.subTest(address=address):
                 response = self.authorized_client_author.get(address)
                 for i in range(len(info)):
-                    self.assertIn(info[i], list(response.context['page_obj']))
+                    self.assertIn(info[i], list(
+                        response.context.get('page_obj')))
 
     def test_image_in_context(self):
         small_gif = (
@@ -280,7 +282,7 @@ class PostUrlTest(TestCase):
         post_for_folower = Post.objects.create(
             author=self.author,
             text='Новый пост для подписчиков!!!',
-            group=self.group_1,
+            group=self.group
         )
         first_post_index = 0
         response_follower = self.authorized_client.get(

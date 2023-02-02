@@ -44,6 +44,8 @@ class PostFormTest(TestCase):
         self.authorized_client.force_login(self.user)
         self.authorized_client_author = Client()
         self.authorized_client_author.force_login(PostFormTest.user)
+        self.comment_redirect = ('/auth/login/?next=/posts/'
+                                 f'{PostFormTest.post.id}/comment/')
 
     def test_can_create_new_post_with_image(self):
         posts_count = Post.objects.count()
@@ -56,7 +58,7 @@ class PostFormTest(TestCase):
             b'\x0A\x00\x3B'
         )
         uploaded = SimpleUploadedFile(
-            name='posts/small.gif',
+            name='posts/small_1.gif',
             content=small_gif,
             content_type='image/gif'
         )
@@ -79,12 +81,27 @@ class PostFormTest(TestCase):
         self.assertEqual(first_post.text, form_data['text'])
         self.assertEqual(first_post.group.id, form_data['group'])
         self.assertEqual(first_post.author, self.user)
+        self.assertIn(uploaded.name, first_post.image.name.split('/'))
 
     def test_can_change_post(self):
         posts_count = Post.objects.count()
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        uploaded = SimpleUploadedFile(
+            name='posts/small_2.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         form_data = {
             'text': 'Тестовая группа + Текст из формы',
             'group': self.group.id,
+            'image': uploaded,
         }
         response = self.authorized_client_author.post(
             (reverse('posts:post_edit',
@@ -99,6 +116,7 @@ class PostFormTest(TestCase):
         self.assertEqual(changed_post.text, form_data['text'])
         self.assertEqual(changed_post.group.id, form_data['group'])
         self.assertEqual(changed_post.author, PostFormTest.user)
+        self.assertIn(uploaded.name, changed_post.image.name.split('/'))
 
     def test_can_not_create_post(self):
         posts_count = Post.objects.count()
@@ -135,10 +153,11 @@ class PostFormTest(TestCase):
         form_data = {
             'text': 'Новый комментарий от не авторизованного пользователя.',
         }
-        self.guest_client.post(
+        response = self.guest_client.post(
             reverse('posts:add_comment', kwargs={
                     'post_id': PostFormTest.post.id}),
             data=form_data,
             follow=True
         )
+        self.assertRedirects(response, self.comment_redirect)
         self.assertEqual(Comment.objects.count(), comments_count)

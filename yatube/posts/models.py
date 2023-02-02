@@ -13,7 +13,7 @@ class Group(models.Model):
         return self.title
 
     class Meta:
-        ordering = ("pk",)
+        ordering = ('pk',)
 
 
 class Post(models.Model):
@@ -41,7 +41,7 @@ class Post(models.Model):
         return self.text[:15]
 
     class Meta:
-        ordering = ("-pub_date",)
+        ordering = ('-pub_date',)
         verbose_name = 'Пост'
         verbose_name_plural = 'Посты'
 
@@ -64,7 +64,7 @@ class Comment(models.Model):
         return self.text[:15]
 
     class Meta:
-        ordering = ("-created",)
+        ordering = ('-created',)
 
 
 class Follow(models.Model):
@@ -78,3 +78,9 @@ class Follow(models.Model):
         on_delete=models.CASCADE,
         related_name='following'
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'], name='unique_follow')
+        ]

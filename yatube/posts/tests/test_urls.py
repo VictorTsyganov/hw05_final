@@ -39,6 +39,9 @@ class PostUrlTest(TestCase):
         self.no_page = '/indexisting_page/'
         self.create_page = '/create/'
         self.post_edit_page = f'/posts/{self.post.id}/edit/'
+        self.post_comment = f'/posts/{self.post.id}/comment/'
+        self.post_follow = f'/profile/{self.author.username}/follow/'
+        self.post_unfollow = f'/profile/{self.author.username}/unfollow/'
 
     def test_pages_to_all_users(self):
         urls_name = {
@@ -49,6 +52,9 @@ class PostUrlTest(TestCase):
             self.no_page: HTTPStatus.NOT_FOUND,
             self.create_page: HTTPStatus.FOUND,
             self.post_edit_page: HTTPStatus.FOUND,
+            self.post_comment: HTTPStatus.FOUND,
+            self.post_follow: HTTPStatus.FOUND,
+            self.post_unfollow: HTTPStatus.FOUND,
         }
         for address, code in urls_name.items():
             with self.subTest(address=address):
@@ -64,6 +70,9 @@ class PostUrlTest(TestCase):
             self.no_page: HTTPStatus.NOT_FOUND,
             self.create_page: HTTPStatus.OK,
             self.post_edit_page: HTTPStatus.FOUND,
+            self.post_comment: HTTPStatus.FOUND,
+            self.post_follow: HTTPStatus.FOUND,
+            self.post_unfollow: HTTPStatus.FOUND,
         }
         for address, code in urls_name.items():
             with self.subTest(address=address):
@@ -79,6 +88,9 @@ class PostUrlTest(TestCase):
             self.no_page: HTTPStatus.NOT_FOUND,
             self.create_page: HTTPStatus.OK,
             self.post_edit_page: HTTPStatus.OK,
+            self.post_comment: HTTPStatus.FOUND,
+            self.post_follow: HTTPStatus.FOUND,
+            self.post_unfollow: HTTPStatus.FOUND,
         }
         for address, code in urls_name.items():
             with self.subTest(address=address):
