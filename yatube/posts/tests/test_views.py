@@ -58,9 +58,6 @@ class PostUrlTest(TestCase):
         super().tearDownClass()
 
     def setUp(self):
-        self.not_follower = User.objects.create_user(username='AnyName')
-        self.authorized_not_follower_client = Client()
-        self.authorized_not_follower_client.force_login(self.not_follower)
         self.new_user = User.objects.create_user(username='NoName')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.new_user)
@@ -74,9 +71,6 @@ class PostUrlTest(TestCase):
         self.create_page = 'posts:post_create'
         self.post_edit_page = 'posts:post_edit'
         self.post_comment = 'posts:add_comment'
-        self.post_follow_index = 'posts:follow_index'
-        self.post_follow = 'posts:profile_follow'
-        self.post_unfollow = 'posts:profile_unfollow'
         self.posts_on_second_page = (
             len(Post.objects.all()) % settings.POSTS_ON_PAGE)
         self.posts_on_finsl_author_page = (
@@ -267,32 +261,66 @@ class PostUrlTest(TestCase):
         response_third = self.authorized_client.get(reverse(self.main_page))
         self.assertNotEqual(response_first.content, response_third.content)
 
-    def test_can_follow_and_unfollow(self):
-        count_follow = Follow.objects.all().count()
-        folower_count = self.author.follower.count()
+
+class FollowTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.author = User.objects.create_user(username='author')
+        cls.group = Group.objects.create(
+            title='Тестовая группа',
+            slug='test-slug',
+            description='Тестовое описание',
+        )
+
+        cls.post = Post.objects.create(
+            author=cls.author,
+            text='Для подписчиков. Новый пост!!!',
+            group=cls.group,
+        )
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='Name')
+        self.authorized_follower = Client()
+        self.authorized_follower.force_login(self.user)
+        self.new_user = User.objects.create_user(username='NoName')
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.new_user)
+        self.not_follower = User.objects.create_user(username='AnyName')
+        self.authorized_not_follower = Client()
+        self.authorized_not_follower.force_login(self.not_follower)
+        self.authorized_author_client = Client()
+        self.authorized_author_client.force_login(FollowTests.author)
+        self.post_follow_index = 'posts:follow_index'
+        self.post_follow = 'posts:profile_follow'
+        self.post_unfollow = 'posts:profile_unfollow'
+        self.authorized_follower.get(reverse(self.post_follow, kwargs={
+            'username': FollowTests.author.username}))
+
+    def test_follow(self):
+        count_following = Follow.objects.all().count()
         self.authorized_client.get(reverse(self.post_follow, kwargs={
-                                   'username': self.author.username}))
-        self.assertEqual(Follow.objects.all().count(), count_follow + 1)
-        self.authorized_client.get(reverse(self.post_unfollow, kwargs={
-                                   'username': self.author.username}))
-        self.assertEqual(Follow.objects.all().count(), count_follow)
-        self.authorized_client_author.get(reverse(self.post_follow, kwargs={
-            'username': self.author.username}))
+            'username': FollowTests.author.username}))
+        self.assertEqual(Follow.objects.all().count(), count_following + 1)
+        folower_count = FollowTests.author.following.count()
+        self.authorized_author_client.get(reverse(self.post_follow, kwargs={
+            'username': FollowTests.author.username}))
         self.assertEqual(Follow.objects.all().count(), folower_count)
 
+    def test_follow(self):
+        count_following = Follow.objects.all().count()
+        self.authorized_follower.get(reverse(self.post_unfollow, kwargs={
+            'username': self.author.username}))
+        self.assertEqual(Follow.objects.all().count(), count_following - 1)
+
     def test_new_post_in_feed_followers(self):
-        self.authorized_client.get(reverse(self.post_follow, kwargs={
-                                   'username': self.author.username}))
-        post_for_folower = Post.objects.create(
-            author=self.author,
-            text='Новый пост для подписчиков!!!',
-            group=self.group
-        )
         first_post_index = 0
-        response_follower = self.authorized_client.get(
+        response = self.authorized_follower.get(
             reverse(self.post_follow_index))
-        self.assertEqual(list(response_follower.context['page_obj'])[
-            first_post_index], post_for_folower)
-        response_not_follower = self.authorized_not_follower_client.get(
+        self.assertEqual(list(response.context['page_obj'])[
+            first_post_index], FollowTests.post)
+
+    def test_new_post_no_in_feed_followers(self):
+        response = self.authorized_not_follower.get(
             reverse(self.post_follow_index))
-        self.assertNotContains(response_not_follower, post_for_folower)
+        self.assertNotContains(response, FollowTests.post)

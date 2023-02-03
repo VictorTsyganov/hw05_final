@@ -137,16 +137,23 @@ class PostFormTest(TestCase):
 
     def test_can_comment_post(self):
         comments_count = Comment.objects.count()
+        first_comment_index = 0
         form_data = {
             'text': 'Новый комментарий от авторизованного пользователя.',
         }
-        self.authorized_client.post(
+        response = self.authorized_client.post(
             reverse('posts:add_comment', kwargs={
                     'post_id': PostFormTest.post.id}),
             data=form_data,
             follow=True
         )
+        resp_context = response.context['form']
         self.assertEqual(Comment.objects.count(), comments_count + 1)
+        self.assertEqual(list(resp_context.fields), [
+                         'text'])
+        self.assertEqual(resp_context['text'].value(), None)
+        self.assertEqual(list(response.context.get('comments'))[
+                         first_comment_index].text, form_data['text'])
 
     def test_can_not_comment_post(self):
         comments_count = Comment.objects.count()
