@@ -45,7 +45,7 @@ class PostFormTest(TestCase):
         self.authorized_client_author = Client()
         self.authorized_client_author.force_login(PostFormTest.user)
         self.comment_redirect = ('/auth/login/?next=/posts/'
-                                 f'{PostFormTest.post.id}/comment/')
+                                 f'{self.post.id}/comment/')
 
     def test_can_create_new_post_with_image(self):
         posts_count = Post.objects.count()
@@ -137,23 +137,17 @@ class PostFormTest(TestCase):
 
     def test_can_comment_post(self):
         comments_count = Comment.objects.count()
-        first_comment_index = 0
         form_data = {
             'text': 'Новый комментарий от авторизованного пользователя.',
         }
-        response = self.authorized_client.post(
+        self.authorized_client.post(
             reverse('posts:add_comment', kwargs={
-                    'post_id': PostFormTest.post.id}),
+                    'post_id': self.post.id}),
             data=form_data,
             follow=True
         )
-        resp_context = response.context['form']
         self.assertEqual(Comment.objects.count(), comments_count + 1)
-        self.assertEqual(list(resp_context.fields), [
-                         'text'])
-        self.assertEqual(resp_context['text'].value(), None)
-        self.assertEqual(list(response.context.get('comments'))[
-                         first_comment_index].text, form_data['text'])
+        self.assertEqual(Comment.objects.first().text, form_data['text'])
 
     def test_can_not_comment_post(self):
         comments_count = Comment.objects.count()
@@ -162,7 +156,7 @@ class PostFormTest(TestCase):
         }
         response = self.guest_client.post(
             reverse('posts:add_comment', kwargs={
-                    'post_id': PostFormTest.post.id}),
+                    'post_id': self.post.id}),
             data=form_data,
             follow=True
         )

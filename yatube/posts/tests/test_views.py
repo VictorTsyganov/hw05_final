@@ -167,21 +167,22 @@ class PostUrlTest(TestCase):
         response = self.authorized_client_author.get(
             reverse(self.post_edit_page, kwargs={'post_id': self.post.id}))
         resp_context = response.context['form']
+        post = Post.objects.get(id=self.post.id)
         self.assertEqual(list(resp_context.fields), [
                          'text', 'group', 'image'])
         self.assertEqual(resp_context['text'].value(),
-                         Post.objects.get(id=self.post.id).text)
+                         post.text)
         self.assertEqual(resp_context['group'].value(),
-                         Post.objects.get(id=self.post.id).group_id)
+                         post.group_id)
 
     def test_pages_for_correct_info_another_group(self):
         info_on_pages = {
-            reverse(self.main_page): list(PostUrlTest.group_1.posts.all()),
+            reverse(self.main_page): list(self.group_1.posts.all()),
             reverse(self.group_page, kwargs={'slug': self.group_1.slug}):
-            list(PostUrlTest.group_1.posts.all()),
+            list(self.group_1.posts.all()),
             reverse(self.profile_page, kwargs={'username':
-                                               PostUrlTest.user.username}):
-            list(PostUrlTest.group_1.posts.all()),
+                                               self.user.username}):
+            list(self.group_1.posts.all()),
         }
         for address, info in info_on_pages.items():
             with self.subTest(address=address):
@@ -290,37 +291,47 @@ class FollowTests(TestCase):
         self.authorized_not_follower = Client()
         self.authorized_not_follower.force_login(self.not_follower)
         self.authorized_author_client = Client()
-        self.authorized_author_client.force_login(FollowTests.author)
+        self.authorized_author_client.force_login(self.author)
         self.post_follow_index = 'posts:follow_index'
         self.post_follow = 'posts:profile_follow'
         self.post_unfollow = 'posts:profile_unfollow'
         self.authorized_follower.get(reverse(self.post_follow, kwargs={
-            'username': FollowTests.author.username}))
+            'username': self.author.username}))
 
     def test_follow(self):
         count_following = Follow.objects.all().count()
         self.authorized_client.get(reverse(self.post_follow, kwargs={
-            'username': FollowTests.author.username}))
-        self.assertEqual(Follow.objects.all().count(), count_following + 1)
-        folower_count = FollowTests.author.following.count()
+            'username': self.author.username}))
+        new_count_following = Follow.objects.all().count()
+        self.assertEqual(new_count_following, count_following + 1)
+        follow_obj = Follow.objects.get(
+            author_id=self.author.id, user_id=self.new_user.id)
+        self.assertEqual(follow_obj.author, self.author)
+        self.assertEqual(follow_obj.user, self.new_user)
+        folower_count = self.author.following.count()
         self.authorized_author_client.get(reverse(self.post_follow, kwargs={
-            'username': FollowTests.author.username}))
+            'username': self.author.username}))
         self.assertEqual(Follow.objects.all().count(), folower_count)
 
-    def test_follow(self):
+    def test_unfollow(self):
+        Follow.objects.create(
+            author_id=self.author.id, user_id=self.new_user.id)
         count_following = Follow.objects.all().count()
-        self.authorized_follower.get(reverse(self.post_unfollow, kwargs={
+        self.authorized_client.get(reverse(self.post_unfollow, kwargs={
             'username': self.author.username}))
         self.assertEqual(Follow.objects.all().count(), count_following - 1)
+        follow_obj = Follow.objects.filter(
+            author_id=self.author.id, user_id=self.new_user.id)
+        self.assertFalse(follow_obj.exists())
 
     def test_new_post_in_feed_followers(self):
         first_post_index = 0
         response = self.authorized_follower.get(
             reverse(self.post_follow_index))
         self.assertEqual(list(response.context['page_obj'])[
-            first_post_index], FollowTests.post)
+            first_post_index], self.post)
 
     def test_new_post_no_in_feed_followers(self):
         response = self.authorized_not_follower.get(
             reverse(self.post_follow_index))
-        self.assertNotContains(response, FollowTests.post)
+        self.assertNotContains(response, self.post)
