@@ -39,11 +39,11 @@ class PostFormTest(TestCase):
 
     def setUp(self):
         self.guest_client = Client()
-        self.user = User.objects.create_user(username='NoName')
+        self.new_user = User.objects.create_user(username='NoName')
         self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
+        self.authorized_client.force_login(self.new_user)
         self.authorized_client_author = Client()
-        self.authorized_client_author.force_login(PostFormTest.user)
+        self.authorized_client_author.force_login(self.user)
         self.comment_redirect = ('/auth/login/?next=/posts/'
                                  f'{self.post.id}/comment/')
 
@@ -75,12 +75,12 @@ class PostFormTest(TestCase):
         first_post = Post.objects.first()
         self.assertRedirects(
             response, (reverse('posts:profile', kwargs={
-                       'username': self.user.username}))
+                       'username': self.new_user.username}))
         )
         self.assertEqual(Post.objects.count(), posts_count + 1)
         self.assertEqual(first_post.text, form_data['text'])
         self.assertEqual(first_post.group.id, form_data['group'])
-        self.assertEqual(first_post.author, self.user)
+        self.assertEqual(first_post.author, self.new_user)
         self.assertIn(uploaded.name, first_post.image.name.split('/'))
 
     def test_can_change_post(self):
@@ -115,7 +115,7 @@ class PostFormTest(TestCase):
         self.assertEqual(Post.objects.count(), posts_count)
         self.assertEqual(changed_post.text, form_data['text'])
         self.assertEqual(changed_post.group.id, form_data['group'])
-        self.assertEqual(changed_post.author, PostFormTest.user)
+        self.assertEqual(changed_post.author, self.user)
         self.assertIn(uploaded.name, changed_post.image.name.split('/'))
 
     def test_can_not_create_post(self):
@@ -148,6 +148,8 @@ class PostFormTest(TestCase):
         )
         self.assertEqual(Comment.objects.count(), comments_count + 1)
         self.assertEqual(Comment.objects.first().text, form_data['text'])
+        self.assertEqual(Comment.objects.first().author, self.new_user)
+        self.assertEqual(Post.objects.get(id=self.post.id).author, self.user)
 
     def test_can_not_comment_post(self):
         comments_count = Comment.objects.count()
